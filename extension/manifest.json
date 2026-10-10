@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "WNACG Downloader",
+  "name": "Comic Crawler",
   "version": "2.0.0",
   "description": "Send WNACG pages to the local downloader.",
   "permissions": ["storage", "contextMenus", "activeTab", "scripting"],
@@ -28,7 +28,7 @@
     }
   ],
   "action": {
-    "default_title": "WNACG Downloader",
+    "default_title": "Comic Crawler",
     "default_popup": "popup.html"
   },
   "options_page": "options.html"

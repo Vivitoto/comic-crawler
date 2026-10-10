@@ -1,4 +1,4 @@
-# WNACG Downloader
+# Comic Crawler
 
 一个面向本机和可信内网的 WNACG 下载管理工具。通过 Web 后台批量添加任务、查看进度、管理本地资料库，并在下载后校验图片与 ZIP 的完整性。可选的 Chrome 扩展支持从站点页面直接提交任务。
 
@@ -22,21 +22,50 @@
 
 ## 快速启动（Docker）
 
-需要 Docker 和 **Docker Compose 2.24.0 或更新版本**。无需在宿主机安装 Python 或 Node.js。
+需要 Docker 和 Docker Compose。无需在宿主机安装 Python 或 Node.js。
 
 ```bash
-git clone https://github.com/HappyQuQu/wnacg-crawler.git
-cd wnacg-crawler
+git clone https://github.com/Vivitoto/comic-crawler.git
+cd comic-crawler
 docker compose up -d --build
 ```
 
-首次构建会安装依赖和 Chromium，可能需要几分钟。启动后访问：
+使用代理时，只需设置一个变量；它同时供 WNACG 和 JMComic 使用：
 
-- 后台管理：<http://127.0.0.1:8080/>
-- API 文档：<http://127.0.0.1:8080/docs>
-- 健康检查：<http://127.0.0.1:8080/api/health>
+```bash
+COMIC_CRAWLER_PROXY=http://host.docker.internal:7890 \
+docker compose up -d --build
+```
 
-默认即可运行。需要环境配置时，复制 `.env.example` 为 `.env`，按需修改后运行 `docker compose up -d`。
+示例 `docker-compose.yml`：
+
+```yaml
+services:
+  comic-crawler:
+    image: vivitoto/comic-crawler:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    shm_size: "2gb"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      COMIC_CRAWLER_PROXY: "${COMIC_CRAWLER_PROXY:-}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+```
+
+启动：
+
+```bash
+docker compose up -d
+```
 
 ```bash
 # 查看服务状态

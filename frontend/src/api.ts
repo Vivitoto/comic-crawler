@@ -11,6 +11,8 @@ import type {
   AppConfig,
 } from "./types";
 
+export type SourceName = "wnacg" | "jmcomic";
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -63,17 +65,17 @@ export async function fetchConfig(): Promise<AppConfig> {
   return api<AppConfig>("/api/config");
 }
 
-export async function parseInput(text: string): Promise<ParseResult> {
+export async function parseInput(text: string, source: SourceName): Promise<ParseResult> {
   return api<ParseResult>("/api/inputs/parse", {
     method: "POST",
-    body: JSON.stringify({ text, source: "manual" }),
+    body: JSON.stringify({ text, source }),
   });
 }
 
-export async function batchCreateTasks(items: { manga_id: string }[]): Promise<{ created: Task[]; skipped: unknown[] }> {
+export async function batchCreateTasks(items: { manga_id: string }[], source: SourceName): Promise<{ created: Task[]; skipped: unknown[] }> {
   return api("/api/tasks/batch", {
     method: "POST",
-    body: JSON.stringify({ items, source: "manual", start_immediately: true }),
+    body: JSON.stringify({ items, source, start_immediately: true }),
   });
 }
 

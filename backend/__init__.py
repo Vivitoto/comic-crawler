@@ -1,1 +1,1 @@
-"""WNACG Downloader backend package."""
+"""Comic Crawler backend package."""

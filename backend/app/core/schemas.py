@@ -1,8 +1,9 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from backend.app.core.config import ProxySettings
+from backend.app.crawler.sources import validate_source
 
 
 class ApiResponse(BaseModel):
@@ -13,14 +14,16 @@ class ApiResponse(BaseModel):
 
 class ParseInputRequest(BaseModel):
     text: str
-    source: str = "manual"
+    source: str = "wnacg"
+    _validate_source = field_validator("source")(validate_source)
 
 
 class TaskCreateRequest(BaseModel):
     manga_id: str = Field(pattern=r"^\d+$")
     mode: Literal["download", "verify", "zip"] = "download"
-    source: str = "manual"
+    source: str = "wnacg"
     start_immediately: bool = True
+    _validate_source = field_validator("source")(validate_source)
 
 
 class BatchTaskItem(BaseModel):
@@ -30,9 +33,10 @@ class BatchTaskItem(BaseModel):
 class BatchTaskCreateRequest(BaseModel):
     items: list[BatchTaskItem]
     mode: Literal["download", "verify", "zip"] = "download"
-    source: str = "batch_text"
+    source: str = "wnacg"
     dedupe: bool = True
     start_immediately: bool = True
+    _validate_source = field_validator("source")(validate_source)
 
 
 class TaskRetryRequest(BaseModel):

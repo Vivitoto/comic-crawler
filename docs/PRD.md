@@ -1,4 +1,4 @@
-# WNACG Downloader 产品需求文档
+# Comic Crawler 产品需求文档
 
 版本：v0.1  
 日期：2026-05-26  

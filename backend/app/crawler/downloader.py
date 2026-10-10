@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -37,7 +38,7 @@ class Downloader:
     async def client(self) -> AsyncSession:
         if self._client is None:
             settings = get_settings()
-            proxy = None
+            proxy = os.getenv("COMIC_CRAWLER_PROXY")
             if settings.proxy.is_proxy:
                 proxy = f"http://{settings.proxy.address}:{settings.proxy.port}"
             cookies = self._load_browser_cookies()

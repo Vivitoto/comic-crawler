@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-WNACG Downloader is a local download hub for a manga image site. Three components:
+Comic Crawler is a local download hub for a manga image site. Three components:
 - **Backend** (Python FastAPI) -- core product, task pipeline, database, crawler
 - **Frontend** (React + Vite + TypeScript) -- web admin UI
 - **Extension** (Chrome Manifest V3) -- browser entry point for submitting tasks

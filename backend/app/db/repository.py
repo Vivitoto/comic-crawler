@@ -6,6 +6,7 @@ from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.time import local_isoformat
+from backend.app.crawler.sources import manga_key, source_identity
 from backend.app.db.models import (
     AppLog,
     DownloadFile,
@@ -273,7 +274,7 @@ class TaskRepository:
     ) -> DownloadTask:
         task = DownloadTask(
             id=f"task_{uuid4().hex[:12]}",
-            manga_id=manga_id,
+            manga_id=manga_key(source, manga_id),
             source=source,
             status=status,
             stage=stage,
@@ -330,6 +331,7 @@ def task_to_dict(task: DownloadTask) -> dict:
         "id": task.id,
         "task_id": task.id,
         "manga_id": task.manga_id,
+        **source_identity(task.manga_id),
         "title": "",
         "cover_url": "",
         "source": task.source,

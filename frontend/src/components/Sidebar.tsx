@@ -37,7 +37,7 @@ export function Sidebar({
           <Download size={20} />
         </div>
         <div>
-          <strong>WNACG Downloader</strong>
+          <strong>Comic Crawler</strong>
           <span>本地采集工作台</span>
         </div>
       </div>

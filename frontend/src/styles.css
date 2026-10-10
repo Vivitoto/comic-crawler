@@ -3638,3 +3638,178 @@ tbody tr:hover {
     font-size: 12px;
   }
 }
+
+/* Final visual pass: calmer surfaces, clearer hierarchy, source-aware controls. */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --surface-inset: #f7f8fb;
+  --line: rgba(31, 41, 55, 0.10);
+  --line-strong: rgba(31, 41, 55, 0.18);
+  --text: #172033;
+  --text-secondary: #344054;
+  --muted: #667085;
+  --subtle: #98a2b3;
+  --primary: #335cff;
+  --primary-hover: #2448db;
+  --primary-soft: rgba(51, 92, 255, 0.10);
+  --shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 10px 28px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 24px 70px rgba(16, 24, 40, 0.18);
+}
+
+body {
+  background:
+    radial-gradient(circle at 90% -10%, rgba(51, 92, 255, 0.08), transparent 28rem),
+    var(--bg);
+}
+
+.sidebar {
+  padding: 22px 16px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  box-shadow: 8px 0 30px rgba(16, 24, 40, 0.03);
+}
+
+.brand-mark {
+  border-radius: 12px;
+  background: linear-gradient(145deg, #335cff, #6f7fff);
+  box-shadow: 0 8px 18px rgba(51, 92, 255, 0.24);
+}
+
+.nav-item {
+  height: 42px;
+  border: 1px solid transparent;
+}
+
+.nav-item.active {
+  border-color: rgba(51, 92, 255, 0.15);
+  box-shadow: var(--shadow-sm);
+}
+
+.toolbar {
+  height: 64px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.toolbar-title {
+  letter-spacing: -0.02em;
+}
+
+.content {
+  padding-top: 28px;
+}
+
+.panel,
+.library-content,
+.library-sidebar,
+.library-detail-panel {
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-header,
+.library-toolbar {
+  background: linear-gradient(180deg, #fff, #fcfdff);
+}
+
+.button.primary {
+  background: linear-gradient(135deg, #335cff, #536fff);
+  box-shadow: 0 6px 14px rgba(51, 92, 255, 0.18);
+}
+
+.button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2448db, #465fe8);
+}
+
+.add-panel {
+  width: min(580px, 94vw);
+  max-height: min(820px, 88vh);
+  box-shadow: var(--shadow-lg);
+}
+
+.add-panel-header {
+  padding: 18px 22px;
+  background: linear-gradient(135deg, #fff, #f8faff);
+}
+
+.add-panel-header h2 {
+  letter-spacing: -0.02em;
+}
+
+.add-panel-source {
+  padding: 10px 12px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-inset);
+}
+
+.add-panel-source .field-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+
+.add-panel-source .segment-group {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.add-panel-source .segment {
+  flex: 1;
+  justify-content: center;
+  height: 34px;
+  border-radius: 8px;
+}
+
+.add-panel-source .segment.active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.add-panel-body textarea {
+  min-height: 132px;
+  background: #fff;
+}
+
+.add-panel-summary {
+  background: #f8faff;
+}
+
+.status {
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
+.task-card,
+.library-card,
+.metric,
+.mini-task {
+  box-shadow: var(--shadow-sm);
+}
+
+.task-card:hover,
+.library-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.task-card,
+.library-card {
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+@media (max-width: 860px) {
+  .sidebar {
+    padding: 14px 12px;
+  }
+  .toolbar {
+    height: 58px;
+    padding-inline: 18px;
+  }
+  .content {
+    padding: 18px 16px 34px;
+  }
+}

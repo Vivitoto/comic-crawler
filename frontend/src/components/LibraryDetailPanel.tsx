@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import type { LibraryItem } from "../types";
-import { formatBytes, formatTime, libraryDisplayName } from "../utils";
+import { formatBytes, formatTime, libraryDisplayName, sourceUrl } from "../utils";
 import { Info, StatusBadge } from "./Common";
 import { DetailSummary } from "./DetailSummary";
 
@@ -78,7 +78,7 @@ export function LibraryDetailPanel({
         </button>
         <button
           className="button secondary"
-          onClick={() => window.open(`https://www.wnacg.com/photos-index-aid-${item.manga_id}.html`, "_blank")}
+          onClick={() => window.open(sourceUrl(item), "_blank")}
         >
           <ExternalLink size={15} />原始链接
         </button>

@@ -378,4 +378,29 @@ Chrome 手动加载扩展验收 + 真实站点长任务验收
 
 验证：后端 Ruff、Mypy、Compileall 和 Pytest（125 项通过），前端 Lint 与 Build 通过。新增测试覆盖持久化后推送、写入失败不推送、同漫画不同任务隔离、成功/失败/文件复用事件及解析事件。
 
-Docker 实际服务验证 WebSocket 日志与 API 持久化记录一致，页面自动更新、问题筛选、详情展开及刷新后历史恢复正常，无页面控制台错误。仅观察已有下载任务，未创建额外下载任务；18082 预览使用真实记录的只读快照。
+- Docker 实际服务验证 WebSocket 日志与 API 持久化记录一致，页面自动更新、问题筛选、详情展开及刷新后历史恢复正常，无页面控制台错误。仅观察已有下载任务，未创建额外下载任务；18082 预览使用真实记录的只读快照。
+
+## 12. 2026-10-10：第三阶段本地验证环境检查
+
+- 已发现项目现有 `.venv`，解释器为隔离的 Python 3.14.7；系统可用兼容候选还包括 Python 3.11.16，但项目明确要求 Python `>=3.12`，因此未采用 3.11 环境。
+- 已确认可用本地 uv：`/home/vito/.hermes/bin/uv`（0.12.8）。未安装系统包，也未修改全局环境。
+- 尝试在项目 `.venv` 内以 `uv pip install -e '.[dev]'` 安装依赖；解析成功但构建 `greenlet==3.1.1` 时失败，准确原因是构建环境缺少 `clang++`（系统编译器），没有绕过测试。
+- 已创建项目内隔离 Python 3.12.14 环境 `.venv312`，使用完整项目依赖安装成功；`uv pip check` 通过，避免了 Python 3.14 下 Playwright 旧版依赖约束不一致的问题。后续后端验收优先使用 `.venv312`。
+- `.venv312` 验证：定向 source/branding/health 11 passed；完整 pytest 161 passed；Ruff、compileall、Mypy 均通过；保留 1 个 FastAPI/httpx deprecation warning。
+- 期间修复了测试暴露的 Pydantic 验证错误 JSON 序列化、测试内部 source registry、失败图片重试后的完成状态/重跑边界；`ruff check backend` 与 `python -m compileall -q backend` 均通过。
+- JMComic 离线规范化已完成第一个 RED→GREEN 垂直切片：纯数字 ID 和 `jmcomic.me/album/<id>` URL 规范化为数字 ID；未知 URL 形状明确抛出 `ValueError`。实现只使用字符串/URL 解析，不访问网络。
+- JMComic 已注册到 source registry，但下载边界仍明确抛出 `NotImplementedError`；未访问真实 JMComic，未下载内容。
+- JMComic 任务提交边界已补齐：单任务和批量任务在 API 层对 `source=jmcomic` 返回 400，避免只注册 source 却误入现有 WNACG 下载流程。
+- `.venv312` 定向 source/branding/health 测试现为 12 passed；完整后端 pytest 最新复验为 162 passed，保留 1 个 FastAPI/httpx deprecation warning。
+- 当前环境已可运行 pytest；此前的安装阻塞已解除。Python 3.14 直接安装旧版 `greenlet==3.1.1` 的失败记录保留作环境证据，但不再是当前阻塞。
+- 已修复 `scripts/validate.sh` 固定使用旧 `.venv` 的问题，新增 `WNACG_PYTHON_ENV`，默认使用 `.venv312`；因此后台进程中旧 `.venv` 的 `playwright/pyee` 缺失不会再污染验证结果。
+- Alembic SQLite 迁移已修复：移除 SQLite 不支持的 `ALTER COLUMN ... SET DEFAULT`，改为仅更新历史行；临时 SQLite `upgrade head` 通过。
+- 前端依赖通过本地 `npm install` 恢复；因系统没有 `zip` 命令，扩展打包脚本增加 Python `zipfile` 隔离回退，不安装系统包。
+- JMComic 后端真实 adapter 已接入 `jmcomic==2.7.8`，覆盖元数据/章节/图片枚举、解码、校验、重试、恢复、ZIP、日志、文件复用和来源隔离；不再保留下载 stub。
+- 后端完整 pytest 最新结果：177 passed；JMComic 集成测试 14 项；Ruff、Mypy、compileall 通过。真实 Docker JMComic ID `123456` 已完成下载验收；离线测试使用维护库协议 fixture 和 loopback 图片 HTTP。
+- 前端新增 source 切换与 Vitest 测试；前端测试 4 passed，lint/build 通过。JMComic 输入预检已按来源调用 URL 规范化。
+- `scripts/validate.sh` 已重新通过：后端 177 passed、Ruff、Mypy、compileall、Alembic、前端 lint/build、扩展 build/package、git diff check 全部通过。JMComic 测试文件对无 stub 的第三方库使用了局部 `import-untyped` 忽略，不降低生产代码检查范围。
+- 已在 Docker 容器中通过代理完成真实 JMComic 下载验收：ID `123456` 首次任务因上游 CDN reset 失败，随后通过前端等价的任务 retry API 重试成功；最终状态 `completed`，阶段 `done`，84/84 图片有效，ZIP 已生成，资料库状态 `completed`。标题和 source metadata 正确持久化，Docker 容器保持 healthy。
+- 真实验收期间未绕过任务流程：任务经历 queued/running/downloading/zipping/done，失败日志和重试计数均保留。
+- Compose 已精简为单服务 `comic-crawler`，只保留一个可选代理变量 `COMIC_CRAWLER_PROXY`；WNACG/JMComic 共享同一代理，不再暴露 `WNACG_JMCOMIC__PROXY_URL`。
+- UI 验证：Vitest 4 passed、ESLint、前端 build 通过；完整后端 pytest 177 passed。`git diff --check` 已通过。

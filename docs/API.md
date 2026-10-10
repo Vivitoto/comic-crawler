@@ -99,6 +99,10 @@ failed
 
 ## 3. 任务
 
+任务 `source` 是受校验的来源标识；当前仅支持 `wnacg`。省略该字段时默认
+`wnacg`，未知来源返回 `400`，不会进入任务执行器。任务创建、列表、详情、重试
+响应均保留 `source` 字段；现有未携带 `source` 的请求保持兼容。
+
 ### POST /api/tasks
 
 创建单个任务。
@@ -109,7 +113,7 @@ Request：
 {
   "manga_id": "123456",
   "mode": "download",
-  "source": "manual",
+  "source": "wnacg",
   "start_immediately": true
 }
 ```
@@ -141,7 +145,7 @@ Request：
     { "manga_id": "298731" }
   ],
   "mode": "download",
-  "source": "batch_text",
+  "source": "wnacg",
   "dedupe": true,
   "start_immediately": true
 }
@@ -535,7 +539,7 @@ Response：
   "data": {
     "connected": true,
     "version": "1.0.0",
-    "server": "WNACG Downloader",
+    "server": "Comic Crawler",
     "paired": true
   },
   "error": null

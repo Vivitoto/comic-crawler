@@ -1,6 +1,7 @@
 import re
 
 from backend.app.core.config import get_settings
+from backend.app.crawler.sources import normalize_jmcomic_input
 from backend.app.db.database import SessionLocal
 from backend.app.db.repository import MangaRepository, TaskRepository
 
@@ -9,7 +10,7 @@ AID_RE = re.compile(r"aid-(\d+)")
 
 
 class InputService:
-    async def parse(self, text: str, source: str = "manual") -> dict:
+    async def parse(self, text: str, source: str = "wnacg") -> dict:
         raw_parts = [part.strip() for part in re.split(r"[\s,，]+", text) if part.strip()]
         seen: set[str] = set()
         items: list[dict] = []
@@ -20,7 +21,7 @@ class InputService:
             manga_repo = MangaRepository(session)
             task_repo = TaskRepository(session)
             for raw in raw_parts:
-                manga_id = self._extract_id(raw)
+                manga_id = self._extract_id(raw, source)
                 if not manga_id:
                     invalid += 1
                     items.append(
@@ -46,7 +47,10 @@ class InputService:
                     {
                         "raw": raw,
                         "manga_id": manga_id,
-                        "url": get_settings().manga_page_url.format(page=1, aid=manga_id),
+                        "url": (
+                            get_settings().manga_page_url.format(page=1, aid=manga_id)
+                            if source == "wnacg" else raw
+                        ),
                         "valid": True,
                         "status": status,
                         "title": info.title if info else "",
@@ -74,7 +78,12 @@ class InputService:
             },
         }
 
-    def _extract_id(self, value: str) -> str | None:
+    def _extract_id(self, value: str, source: str = "wnacg") -> str | None:
+        if source == "jmcomic":
+            try:
+                return normalize_jmcomic_input(value)
+            except ValueError:
+                return None
         if ID_RE.match(value):
             return value
         match = AID_RE.search(value)

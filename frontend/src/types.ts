@@ -66,6 +66,9 @@ export type LibraryFile = {
 
 export type LibraryItem = {
   manga_id: string;
+  source: string;
+  source_item_id?: string;
+  source_url?: string;
   title: string;
   cover_url: string;
   status: string;

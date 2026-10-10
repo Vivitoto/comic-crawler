@@ -12,7 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type { Task, LogItem, QueueFilter } from "../types";
-import { stageLabel, formatTime, canPause, canResume, canCancel, canRetry, formatLogMessage, formatLogDetails, taskDisplayName, progressPercent, formatDuration } from "../utils";
+import { stageLabel, formatTime, canPause, canResume, canCancel, canRetry, formatLogMessage, formatLogDetails, taskDisplayName, progressPercent, formatDuration, sourceUrl } from "../utils";
 import { Info, ProgressBar, StatusBadge, LogLevelBadge } from "../components/Common";
 import { SkeletonTable } from "../components/Skeleton";
 import { DetailSummary } from "../components/DetailSummary";
@@ -214,7 +214,7 @@ function TableView({
                   <button className="icon-button" title="暂停" onClick={(e) => { e.stopPropagation(); void onControl(task, "pause"); }} disabled={!canPause(task) || loading}><Pause size={14} /></button>
                   <button className="icon-button" title="继续" onClick={(e) => { e.stopPropagation(); void onControl(task, "resume"); }} disabled={!canResume(task) || loading}><Play size={14} /></button>
                   <button className="icon-button" title="重试" onClick={(e) => { e.stopPropagation(); void onRetry(task); }} disabled={!canRetry(task) || loading}><RotateCcw size={14} /></button>
-                  <button className="icon-button" title="打开原始链接" onClick={(e) => { e.stopPropagation(); window.open(`https://www.wnacg.com/photos-index-aid-${task.manga_id}.html`, "_blank"); }}><ExternalLink size={14} /></button>
+                  <button className="icon-button" title="打开原始链接" onClick={(e) => { e.stopPropagation(); window.open(sourceUrl(task), "_blank"); }}><ExternalLink size={14} /></button>
                 </div>
               </td>
             </tr>
@@ -272,7 +272,7 @@ function CardView({
                 <button className="icon-button" title="暂停" onClick={(e) => { e.stopPropagation(); void onControl(task, "pause"); }} disabled={!canPause(task) || loading}><Pause size={14} /></button>
                 <button className="icon-button" title="继续" onClick={(e) => { e.stopPropagation(); void onControl(task, "resume"); }} disabled={!canResume(task) || loading}><Play size={14} /></button>
                 <button className="icon-button" title="重试" onClick={(e) => { e.stopPropagation(); void onRetry(task); }} disabled={!canRetry(task) || loading}><RotateCcw size={14} /></button>
-                <button className="icon-button" title="打开原始链接" onClick={(e) => { e.stopPropagation(); window.open(`https://www.wnacg.com/photos-index-aid-${task.manga_id}.html`, "_blank"); }}><ExternalLink size={14} /></button>
+                <button className="icon-button" title="打开原始链接" onClick={(e) => { e.stopPropagation(); window.open(sourceUrl(task), "_blank"); }}><ExternalLink size={14} /></button>
               </div>
             </div>
           </article>
@@ -338,7 +338,7 @@ function TaskDetailPanel({
           <button className="button secondary" disabled={!task || !canResume(task) || loading} onClick={() => task && void onControl(task, "resume")}><Play size={15} />继续</button>
           <button className="button secondary danger-button" disabled={!task || !canCancel(task) || loading} onClick={() => task && void onControl(task, "cancel")}><XCircle size={15} />取消</button>
           <button className="button primary" disabled={!task || !canRetry(task) || loading} onClick={() => task && void onRetry(task)}><RotateCcw size={15} />重试</button>
-          {task && <button className="button secondary" onClick={() => window.open(`https://www.wnacg.com/photos-index-aid-${task.manga_id}.html`, "_blank")}><ExternalLink size={15} />原始链接</button>}
+          {task && <button className="button secondary" onClick={() => window.open(sourceUrl(task), "_blank")}><ExternalLink size={15} />原始链接</button>}
         </div>
         {isActive && <p className="detail-hint">任务进行中，可暂停或取消</p>}
       </div>

@@ -1,5 +1,7 @@
 import asyncio
+import json
 from collections.abc import Sequence
+from dataclasses import asdict
 from pathlib import Path
 from time import monotonic
 
@@ -13,8 +15,10 @@ from backend.app.crawler.images import (
     find_valid_image_path,
     is_valid_image_file,
 )
+from backend.app.crawler.jm_source import JmPage, download_image, refresh_page
 from backend.app.crawler.parser import PicPageItem, manga_parser
 from backend.app.crawler.smart_fetcher import smart_fetch, smart_fetch_bytes
+from backend.app.crawler.sources import get_source_adapter, source_identity
 from backend.app.db.database import SessionLocal
 from backend.app.db.models import DownloadFile, MangaPicPage
 from backend.app.db.repository import (
@@ -72,12 +76,17 @@ class TaskRunner:
             manga_id = await self._manga_id(task_id)
             if not manga_id:
                 return
+            await self._source_adapter(task_id)
             await self._log("info", "task_started", "任务开始执行", task_id, manga_id)
-            info = await self._fetch_info(task_id, manga_id)
-            await self._ensure_runnable(task_id)
-            await self._fetch_pages(task_id, manga_id, info["page_count"])
-            await self._ensure_runnable(task_id)
-            pic_count = await self._resolve_images(task_id, manga_id)
+            adapter = await self._source_adapter(task_id)
+            if adapter.name == "jmcomic":
+                pic_count = await self._fetch_jm(task_id, manga_id)
+            else:
+                info = await self._fetch_info(task_id, manga_id)
+                await self._ensure_runnable(task_id)
+                await self._fetch_pages(task_id, manga_id, info["page_count"])
+                await self._ensure_runnable(task_id)
+                pic_count = await self._resolve_images(task_id, manga_id)
             await self._ensure_runnable(task_id)
             valid_count = await self._download_images(task_id, manga_id)
             await self._ensure_runnable(task_id)
@@ -110,6 +119,7 @@ class TaskRunner:
             manga_id = await self._manga_id(task_id)
             if not manga_id:
                 return
+            await self._source_adapter(task_id)
             await self._log(
                 "info",
                 "retry_failed_images_started",
@@ -143,6 +153,36 @@ class TaskRunner:
         async with SessionLocal() as session:
             task = await TaskRepository(session).get(task_id)
             return task.manga_id if task else None
+
+    async def _source_adapter(self, task_id: str):
+        async with SessionLocal() as session:
+            task = await TaskRepository(session).get(task_id)
+            if task is None:
+                raise TaskControlSignal("missing")
+            return get_source_adapter(task.source)
+
+    async def _fetch_jm(self, task_id: str, manga_id: str) -> int:
+        await self._set_task(task_id, "running", "fetching_info")
+        adapter = await self._source_adapter(task_id)
+        metadata = await adapter.fetch_manga(source_identity(manga_id)["source_item_id"])
+        await self._ensure_runnable(task_id)
+        async with SessionLocal() as session:
+            repo = MangaRepository(session)
+            await repo.upsert_info(manga_id, metadata.title, metadata.pages[0].url,
+                                   metadata.chapter_count)
+            await repo.upsert_page(manga_id, 1, source_identity(manga_id)["source_url"],
+                                   json.dumps(asdict(metadata), ensure_ascii=False))
+            for index, page in enumerate(metadata.pages, 1):
+                await self._ensure_runnable(task_id)
+                await repo.upsert_pic_page(
+                    manga_id, index, f"https://jmcomic.me/photo/{page.chapter_id}",
+                    json.dumps(asdict(page)), f"{page.chapter_id}_{page.image_index:04d}", page.url,
+                )
+            await repo.update_info_status(manga_id, "ready", len(metadata.pages))
+        await self._log("info", "manga_info_resolved", "JMComic metadata and chapters resolved",
+                        task_id, manga_id, "resolving_images",
+                        {"chapters": metadata.chapter_count, "images": len(metadata.pages)})
+        return len(metadata.pages)
 
     async def _fetch_info(self, task_id: str, manga_id: str) -> dict:
         settings = get_settings()
@@ -458,6 +498,16 @@ class TaskRunner:
         if not page.page_url:
             return page
 
+        adapter = await self._source_adapter(task_id)
+        if adapter.name == "jmcomic":
+            await self._ensure_runnable(task_id)
+            updated = await refresh_page(JmPage(**json.loads(page.page_name)))
+            await self._ensure_runnable(task_id)
+            async with SessionLocal() as session:
+                return await MangaRepository(session).upsert_pic_page(
+                    manga_id, page.page_index, page.page_url, json.dumps(asdict(updated)),
+                    page.pic_num, updated.url,
+                )
         settings = get_settings()
         await self._ensure_runnable(task_id)
         html = await smart_fetch(page.page_url, referer=settings.manga_main_url)
@@ -501,7 +551,11 @@ class TaskRunner:
         settings = get_settings()
 
         async def fetch_image() -> tuple[bytes, PreparedImage]:
-            data = await smart_fetch_bytes(page.pic_url, referer=page.page_url)
+            adapter = await self._source_adapter(task_id)
+            if adapter.name == "jmcomic":
+                data = await download_image(page.pic_url, json.loads(page.page_name)["scramble_id"])
+            else:
+                data = await smart_fetch_bytes(page.pic_url, referer=page.page_url)
             await self._ensure_runnable(task_id)
             prepared = await asyncio.to_thread(
                 prepare_image, data, enabled=settings.enable_image_compression,

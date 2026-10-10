@@ -47,7 +47,7 @@ http://127.0.0.1:5173/
 加载成功后应看到扩展名称：
 
 ```text
-WNACG Downloader
+Comic Crawler
 ```
 
 ## 4. 配置扩展

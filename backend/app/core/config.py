@@ -15,8 +15,16 @@ class ProxySettings(BaseModel):
     password: str = ""
 
 
+class JmcomicSettings(BaseModel):
+    proxy_url: str = ""
+    timeout_seconds: int = Field(default=30, ge=5, le=120)
+    retry_count: int = Field(default=2, ge=0, le=5)
+    request_delay_ms: int = Field(default=1200, ge=0, le=10000)
+
+
 class Settings(BaseSettings):
-    app_name: str = "WNACG Downloader"
+    jmcomic: JmcomicSettings = Field(default_factory=JmcomicSettings)
+    app_name: str = "Comic Crawler"
     environment: str = "development"
     host: str = "127.0.0.1"
     port: int = 8080

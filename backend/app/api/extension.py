@@ -1,5 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 
+from backend.app.core.config import get_settings
 from backend.app.core.schemas import (
     ApiResponse,
     ExtensionSubmitManyRequest,
@@ -21,7 +22,7 @@ async def extension_status(_: None = Depends(require_extension_token)):
         data={
             "connected": True,
             "paired": True,
-            "server": "WNACG Downloader",
+            "server": get_settings().app_name,
             "version": "2.0.0-dev",
         }
     )

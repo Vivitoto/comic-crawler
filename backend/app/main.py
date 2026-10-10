@@ -1,7 +1,10 @@
+from collections.abc import Sequence
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.app.api import config, extension, health, inputs, library, logs, tasks, ws
 from backend.app.core.config import get_settings
@@ -26,8 +29,8 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="WNACG Downloader",
-        version="2.0.0-dev",
+        title=settings.app_name,
+        version="1.0.0",
         lifespan=lifespan,
     )
 
@@ -38,6 +41,28 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError):
+        if any("source" in error.get("loc", ()) for error in exc.errors()):
+            return JSONResponse(
+                status_code=400, content={"detail": _json_safe_errors(exc.errors())}
+            )
+        return JSONResponse(
+            status_code=422, content={"detail": _json_safe_errors(exc.errors())}
+        )
+
+    def _json_safe_errors(errors: Sequence[dict]) -> list[dict]:
+        return [
+            {
+                **error,
+                "ctx": {
+                    key: str(value) if isinstance(value, BaseException) else value
+                    for key, value in (error.get("ctx") or {}).items()
+                },
+            }
+            for error in errors
+        ]
 
     app.include_router(health.router)
     app.include_router(inputs.router)

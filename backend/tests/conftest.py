@@ -26,12 +26,19 @@ def init_test_database() -> None:
 
 @pytest.fixture(autouse=True)
 def prevent_real_downloads(monkeypatch):
+    from jmcomic import JmApiClient  # type: ignore[import-untyped]
+
     from backend.app.crawler.browser_fetcher import BrowserManager
     from backend.app.crawler.downloader import Downloader
 
     async def forbidden(*args, **kwargs):
         raise AssertionError("Tests must mock remote requests and browser launches")
 
+    def forbid_jm(*args, **kwargs):
+        raise AssertionError("Tests must mock JM network transport")
+
+    monkeypatch.setattr(JmApiClient, "req_api", forbid_jm)
+    monkeypatch.setattr(JmApiClient, "get_jm_image", forbid_jm)
     monkeypatch.setattr(Downloader, "client", forbidden)
     monkeypatch.setattr(BrowserManager, "_ensure_started", forbidden)
 

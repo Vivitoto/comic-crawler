@@ -214,7 +214,7 @@ async def test_download_stores_processed_file_original_and_zip_correctly(
             "001",
             "https://example.test/source.bmp",
         )
-        task = await TaskRepository(session).create(manga_id, "compression-test", "queued")
+        task = await TaskRepository(session).create(manga_id, "wnacg", "queued")
     data = noisy_image("BMP")
     fetch = AsyncMock(return_value=data)
     monkeypatch.setattr(runner_module, "smart_fetch_bytes", fetch)

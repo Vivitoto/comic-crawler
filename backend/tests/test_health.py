@@ -37,7 +37,7 @@ def test_parse_create_and_list_task():
 
     create_response = client.post(
         "/api/tasks/batch",
-        json={"items": [{"manga_id": manga_id}], "source": "test", "start_immediately": False},
+        json={"items": [{"manga_id": manga_id}], "source": "wnacg", "start_immediately": False},
     )
     assert create_response.status_code == 200
     created = create_response.json()["data"]["created"]
@@ -48,6 +48,7 @@ def test_parse_create_and_list_task():
     assert list_response.status_code == 200
     items = list_response.json()["data"]["items"]
     assert any(item["manga_id"] == manga_id for item in items)
+    assert any(item["manga_id"] == manga_id and item["source"] == "wnacg" for item in items)
 
     parse_again = client.post("/api/inputs/parse", json={"text": manga_id})
     assert parse_again.status_code == 200
@@ -234,7 +235,7 @@ def test_task_transition_guards_invalid_controls():
 
     create_response = client.post(
         "/api/tasks",
-        json={"manga_id": manga_id, "source": "transition-test", "start_immediately": False},
+        json={"manga_id": manga_id, "source": "wnacg", "start_immediately": False},
     )
     assert create_response.status_code == 200
     task = create_response.json()["data"]
@@ -423,7 +424,7 @@ async def _seed_parallel_download_item(manga_id: str) -> str:
             )
         task = await TaskRepository(session).create(
             manga_id=manga_id,
-            source="parallel-test",
+            source="wnacg",
             status="queued",
         )
         return task.id
@@ -442,7 +443,7 @@ async def _seed_failed_task(manga_id: str) -> str:
         task_repo = TaskRepository(session)
         task = await task_repo.create(
             manga_id=manga_id,
-            source="backfill-test",
+            source="wnacg",
             status="queued",
         )
         failed = await task_repo.update_progress(

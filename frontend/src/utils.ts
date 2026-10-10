@@ -16,6 +16,12 @@ const SHORT_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
   hour12: false,
 });
 
+export function sourceUrl(item: { source: string; manga_id: string }): string {
+  const id = item.source === "jmcomic" ? item.manga_id.replace(/^jmcomic-/, "") : item.manga_id;
+  return item.source === "jmcomic"
+    ? `https://jmcomic.me/album/${id}`
+    : `https://www.wnacg.com/photos-index-aid-${id}.html`;
+}
 export function formatTime(value: string | null | undefined): string {
   if (!value) return "-";
   const date = new Date(value);

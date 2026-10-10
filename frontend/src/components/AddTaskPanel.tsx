@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ListChecks, Plus, X } from "lucide-react";
+import type { SourceName } from "../api";
 import type { ParseResult } from "../types";
 import { parseInput, batchCreateTasks } from "../api";
 import { StatusBadge } from "./Common";
@@ -14,26 +15,39 @@ export function AddTaskPanel({
   onCreated: () => Promise<void>;
 }) {
   const [input, setInput] = useState("");
+  const [source, setSource] = useState<SourceName>("wnacg");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const parseRequestRef = useRef(0);
 
   if (!open) return null;
 
+  function invalidatePreview() {
+    parseRequestRef.current += 1;
+    setParseResult(null);
+    setMessage("");
+  }
+
   async function handleParse() {
     if (!input.trim()) {
-      setParseResult(null);
+      invalidatePreview();
       return;
     }
+    const requestId = ++parseRequestRef.current;
+    setParseResult(null);
+    setMessage("");
     setLoading(true);
     try {
-      const data = await parseInput(input);
+      const data = await parseInput(input, source);
+      if (requestId !== parseRequestRef.current) return;
       setParseResult(data);
       setMessage(`解析完成：有效 ${data.summary.valid}，重复 ${data.summary.duplicate}`);
-    } catch {
-      setMessage("解析失败，请重试");
+    } catch (error) {
+      if (requestId !== parseRequestRef.current) return;
+      setMessage(error instanceof Error ? error.message : "解析失败，请重试");
     } finally {
-      setLoading(false);
+      if (requestId === parseRequestRef.current) setLoading(false);
     }
   }
 
@@ -47,7 +61,7 @@ export function AddTaskPanel({
     }
     setLoading(true);
     try {
-      const data = await batchCreateTasks(items);
+      const data = await batchCreateTasks(items, source);
       setMessage(`已创建 ${data.created.length} 个任务`);
       setInput("");
       setParseResult(null);
@@ -64,6 +78,7 @@ export function AddTaskPanel({
     setInput("");
     setParseResult(null);
     setMessage("");
+    setSource("wnacg");
     onClose();
   }
 
@@ -78,14 +93,22 @@ export function AddTaskPanel({
         </div>
 
         <div className="add-panel-body">
+          <div className="add-panel-source" role="group" aria-label="下载来源">
+            <span className="field-label">来源</span>
+            <div className="segment-group">
+              <button type="button" className={`segment ${source === "wnacg" ? "active" : ""}`} onClick={() => { if (source !== "wnacg") invalidatePreview(); setSource("wnacg"); }}>WNACG</button>
+              <button type="button" className={`segment ${source === "jmcomic" ? "active" : ""}`} onClick={() => { if (source !== "jmcomic") invalidatePreview(); setSource("jmcomic"); }}>JMComic</button>
+            </div>
+          </div>
+
           <label className="field-label" htmlFor="add-task-input">
             输入 ID 或链接（支持批量，每行一个）
           </label>
           <textarea
             id="add-task-input"
             value={input}
-            placeholder={"123456\nhttps://www.wnacg.com/photos-index-page-1-aid-298731.html\n298731, 298732"}
-            onChange={(e) => setInput(e.target.value)}
+            placeholder={source === "wnacg" ? "123456\nhttps://www.wnacg.com/photos-index-page-1-aid-298731.html" : "123456\nhttps://jmcomic.me/album/123456"}
+            onChange={(e) => { setInput(e.target.value); invalidatePreview(); }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();

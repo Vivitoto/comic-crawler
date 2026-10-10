@@ -1,4 +1,4 @@
-# WNACG Downloader 开发文档总览
+# Comic Crawler 开发文档总览
 
 版本：v0.1  
 日期：2026-05-27  

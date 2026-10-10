@@ -3,7 +3,7 @@ import { apiFetch, extractMangaId } from "./shared.js";
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "send-current-page",
-    title: "发送到 WNACG Downloader",
+    title: "发送到 Comic Crawler",
     contexts: ["page", "link"]
   });
 });

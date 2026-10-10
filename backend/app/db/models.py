@@ -67,7 +67,7 @@ class DownloadTask(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     manga_id: Mapped[str] = mapped_column(String, index=True)
-    source: Mapped[str] = mapped_column(String, default="manual")
+    source: Mapped[str] = mapped_column(String, default="wnacg", server_default="wnacg")
     status: Mapped[str] = mapped_column(String, default="pending", index=True)
     stage: Mapped[str] = mapped_column(String, default="none", index=True)
     progress_current: Mapped[int] = mapped_column(Integer, default=0)

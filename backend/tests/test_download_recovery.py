@@ -52,7 +52,7 @@ async def download_case():
         page = await repo.upsert_pic_page(
             manga_id, 1, page_url, f"id_{manga_id}_pic_1", "001", old_url
         )
-        task = await TaskRepository(session).create(manga_id, "recovery-test", "queued")
+        task = await TaskRepository(session).create(manga_id, "wnacg", "queued")
     directory = manga_dir(Path(get_settings().download_path), manga_id, title)
     directory.mkdir(parents=True, exist_ok=True)
     return SimpleNamespace(
@@ -523,7 +523,7 @@ async def test_complete_mocked_task_refreshes_image_and_builds_zip(monkeypatch, 
         assert info.status == "completed"
         assert task.status == "completed"
         assert task.progress_current == task.progress_total == 1
-        rerun = await TaskRepository(session).create(case.manga_id, "recovery-rerun", "queued")
+        rerun = await TaskRepository(session).create(case.manga_id, "wnacg", "queued")
     assert calls == [case.old_url, new_url]
     target = zip_path(Path(settings.download_path), case.manga_id, "Recovery Test")
     with zipfile.ZipFile(target) as archive:

@@ -10,6 +10,7 @@ from backend.app.core.paths import manga_dir, safe_filename, zip_path
 from backend.app.core.time import local_isoformat
 from backend.app.crawler.downloader import image_extension
 from backend.app.crawler.images import find_valid_image_path
+from backend.app.crawler.sources import source_identity
 from backend.app.db.database import SessionLocal
 from backend.app.db.models import DownloadFile, DownloadTask, MangaInfo, MangaPicPage
 from backend.app.db.repository import FileRepository, MangaRepository, TaskRepository, task_to_dict
@@ -180,7 +181,7 @@ class LibraryService:
                 }
             task = await repo.create(
                 manga_id=manga_id,
-                source="library_retry_failed",
+                source=source_identity(manga_id)["source"],
                 status="queued",
                 stage="retrying_failed_images",
             )
@@ -215,6 +216,7 @@ class LibraryService:
         )
         payload: dict[str, Any] = {
             "manga_id": info.id,
+            **source_identity(info.id),
             "title": info.title,
             "cover_url": info.cover_url,
             "status": status,

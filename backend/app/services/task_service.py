@@ -5,6 +5,7 @@ from backend.app.core.schemas import (
     ExtensionSubmitRequest,
     TaskCreateRequest,
 )
+from backend.app.crawler.sources import manga_key
 from backend.app.db.database import SessionLocal
 from backend.app.db.repository import MangaRepository, TaskRepository, task_to_dict
 
@@ -69,15 +70,16 @@ class TaskService:
             return result
 
     async def create(self, payload: TaskCreateRequest) -> dict:
+        manga_id = manga_key(payload.source, payload.manga_id)
         status = "queued" if payload.start_immediately else "pending"
         async with SessionLocal() as session:
             repo = TaskRepository(session)
-            existing = await repo.active_for_manga(payload.manga_id)
+            existing = await repo.active_for_manga(manga_id)
             if existing:
                 result = task_to_dict(existing)
                 result["dedupe_reason"] = "already_active"
                 return await self._enrich(session, result)
-            task = await repo.create(payload.manga_id, payload.source, status)
+            task = await repo.create(manga_id, payload.source, status)
             return await self._enrich(session, task_to_dict(task))
 
     async def create_batch(self, payload: BatchTaskCreateRequest) -> dict:
@@ -88,11 +90,12 @@ class TaskService:
         async with SessionLocal() as session:
             repo = TaskRepository(session)
             for item in payload.items:
+                manga_id = manga_key(payload.source, item.manga_id)
                 if payload.dedupe and item.manga_id in seen:
                     skipped.append({"manga_id": item.manga_id, "reason": "duplicate"})
                     continue
                 seen.add(item.manga_id)
-                existing = await repo.active_for_manga(item.manga_id)
+                existing = await repo.active_for_manga(manga_id)
                 if existing:
                     skipped.append(
                         {
@@ -103,14 +106,14 @@ class TaskService:
                         }
                     )
                     continue
-                task = await repo.create(item.manga_id, payload.source, status)
+                task = await repo.create(manga_id, payload.source, status)
                 created.append(await self._enrich(session, task_to_dict(task)))
         return {"created": created, "skipped": skipped}
 
     async def create_from_extension(self, payload: ExtensionSubmitRequest) -> dict:
         request = TaskCreateRequest(
             manga_id=payload.manga_id,
-            source="extension",
+            source="wnacg",
             start_immediately=True,
         )
         task = await self.create(request)
@@ -122,7 +125,7 @@ class TaskService:
         status = "pending" if payload.mode == "confirm" else "queued"
         request = BatchTaskCreateRequest(
             items=[BatchTaskItem(manga_id=item.manga_id) for item in payload.items],
-            source="extension",
+            source="wnacg",
             start_immediately=status == "queued",
         )
         return await self.create_batch(request)
