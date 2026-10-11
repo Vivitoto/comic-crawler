@@ -2,6 +2,10 @@
 .gitignore
 .codex
 .venv
+.venv312
+.venv312-new
+.python-local
+.python-local-*
 __pycache__
 *.py[cod]
 .pytest_cache

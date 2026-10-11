@@ -383,7 +383,7 @@ Chrome 手动加载扩展验收 + 真实站点长任务验收
 ## 12. 2026-10-10：第三阶段本地验证环境检查
 
 - 已发现项目现有 `.venv`，解释器为隔离的 Python 3.14.7；系统可用兼容候选还包括 Python 3.11.16，但项目明确要求 Python `>=3.12`，因此未采用 3.11 环境。
-- 已确认可用本地 uv：`/home/vito/.hermes/bin/uv`（0.12.8）。未安装系统包，也未修改全局环境。
+- 已确认可用本地 uv：`uv`（0.12.8）。未安装系统包，也未修改全局环境。
 - 尝试在项目 `.venv` 内以 `uv pip install -e '.[dev]'` 安装依赖；解析成功但构建 `greenlet==3.1.1` 时失败，准确原因是构建环境缺少 `clang++`（系统编译器），没有绕过测试。
 - 已创建项目内隔离 Python 3.12.14 环境 `.venv312`，使用完整项目依赖安装成功；`uv pip check` 通过，避免了 Python 3.14 下 Playwright 旧版依赖约束不一致的问题。后续后端验收优先使用 `.venv312`。
 - `.venv312` 验证：定向 source/branding/health 11 passed；完整 pytest 161 passed；Ruff、compileall、Mypy 均通过；保留 1 个 FastAPI/httpx deprecation warning。

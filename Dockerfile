@@ -21,14 +21,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md LICENSE ./
+# Keep dependency and browser layers reusable when application source changes.
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir \
+    fastapi uvicorn[standard] curl-cffi beautifulsoup4 lxml pillow \
+    jmcomic==2.7.8 sqlalchemy aiosqlite greenlet pydantic pydantic-settings \
+    tenacity loguru alembic 'playwright<1.50' playwright-stealth
+RUN playwright install chromium
+
+COPY README.md LICENSE ./
 COPY backend ./backend
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-
-RUN pip install --no-cache-dir . playwright-stealth
-
-# Install Chromium browser binary (deps already installed above)
-RUN playwright install chromium
+RUN pip install --no-cache-dir --no-deps .
 
 EXPOSE 8080
 
