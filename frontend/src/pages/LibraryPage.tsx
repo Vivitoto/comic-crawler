@@ -25,6 +25,7 @@ export function LibraryPage({
   onVerify,
   onZip,
   onRetryFailed,
+  onDelete,
   onRefresh,
   onRefreshDetail,
   setShowOnlyProblemFiles,
@@ -52,6 +53,7 @@ export function LibraryPage({
   onVerify: (item: LibraryItem) => Promise<void>;
   onZip: (item: LibraryItem) => Promise<void>;
   onRetryFailed: (item: LibraryItem) => Promise<void>;
+  onDelete: (item: LibraryItem) => Promise<void>;
   onRefresh: () => Promise<void>;
   onRefreshDetail: () => void;
   setShowOnlyProblemFiles: (v: boolean) => void;
@@ -106,6 +108,7 @@ export function LibraryPage({
         onRefresh={onRefresh}
         onVerify={onVerify}
         onZip={onZip}
+        onDelete={onDelete}
       />
       {selectedLibraryItem && (
         <LibraryDetailPanel
@@ -120,6 +123,7 @@ export function LibraryPage({
           onVerify={onVerify}
           onZip={onZip}
           onRetryFailed={onRetryFailed}
+          onDelete={onDelete}
           onRefreshDetail={onRefreshDetail}
           setShowOnlyProblemFiles={setShowOnlyProblemFiles}
         />

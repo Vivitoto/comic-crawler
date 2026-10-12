@@ -133,7 +133,7 @@ def jm_protocol(monkeypatch):
         if url.startswith(self.API_ALBUM):
             data = dict(
                 id=item_id,
-                name="Local authorized fixture",
+                name=f"Local authorized fixture {item_id}",
                 likes="0",
                 tags=["test"],
                 works=[],
@@ -173,7 +173,7 @@ async def test_jm_adapter_uses_real_library_to_enumerate_all_chapters(jm_protoco
     from backend.app.crawler.sources import get_source_adapter
 
     metadata = await get_source_adapter("jmcomic").fetch_manga("991010")
-    assert metadata.title == "Local authorized fixture"
+    assert metadata.title == "Local authorized fixture 991010"
     assert metadata.authors == ["Tester"]
     assert len(metadata.pages) == 2
     assert [p.chapter_id for p in metadata.pages] == ["991011", "991012"]

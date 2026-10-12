@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Task, TaskProgressMessage } from "../types";
-import { fetchTasks, retryTaskApi, controlTaskApi } from "../api";
+import { fetchTasks, retryTaskApi, controlTaskApi, deleteTaskApi } from "../api";
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -58,6 +58,12 @@ export function useTasks() {
     setSelectedTaskId(updated.task_id);
   }, []);
 
+  const deleteTask = useCallback(async (task: Task, deleteFiles: boolean) => {
+    await deleteTaskApi(task.task_id, deleteFiles);
+    setTasks((current) => current.filter((item) => item.task_id !== task.task_id));
+    setSelectedTaskId((current) => current === task.task_id ? null : current);
+  }, []);
+
   const queueCounts = useMemo(() => ({
     all: tasks.length,
     active: tasks.filter((t) => ["pending", "queued", "running", "paused"].includes(t.status)).length,
@@ -83,5 +89,6 @@ export function useTasks() {
     updateFromWs,
     retryTask,
     controlTask,
+    deleteTask,
   };
 }

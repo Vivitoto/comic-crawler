@@ -102,6 +102,17 @@ export async function retryFailedLibraryApi(mangaId: string): Promise<LibraryRet
   return api<LibraryRetryFailedResult>(`/api/library/${mangaId}/retry-failed`, { method: "POST" });
 }
 
+export async function deleteTaskApi(
+  taskId: string,
+  deleteFiles: boolean,
+): Promise<{ task_id: string; manga_id: string; deleted: boolean; files_deleted: boolean }> {
+  return api(`/api/tasks/${taskId}?delete_files=${deleteFiles}`, { method: "DELETE" });
+}
+
+export async function deleteLibraryApi(mangaId: string, deleteFiles: boolean): Promise<{ manga_id: string; deleted: boolean; files_deleted: boolean }> {
+  return api(`/api/library/${mangaId}?delete_files=${deleteFiles}`, { method: "DELETE" });
+}
+
 export async function saveConfigApi(config: Partial<AppConfig>): Promise<AppConfig & { message: string }> {
   return api("/api/config", {
     method: "POST",

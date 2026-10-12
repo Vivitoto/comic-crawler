@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Archive,
+  Trash2,
 } from "lucide-react";
 import type { LibraryItem, LibrarySortKey, LibraryViewMode } from "../types";
 import { formatBytes, libraryDisplayName } from "../utils";
@@ -38,6 +39,7 @@ export function LibraryContent({
   onRefresh,
   onVerify,
   onZip,
+  onDelete,
 }: {
   items: LibraryItem[];
   selectedId: string | null;
@@ -54,6 +56,7 @@ export function LibraryContent({
   onRefresh: () => Promise<void>;
   onVerify: (item: LibraryItem) => Promise<void>;
   onZip: (item: LibraryItem) => Promise<void>;
+  onDelete: (item: LibraryItem) => Promise<void>;
 }) {
   return (
     <section className="library-content">
@@ -125,6 +128,7 @@ export function LibraryContent({
           onSelect={onSelect}
           onVerify={onVerify}
           onZip={onZip}
+          onDelete={onDelete}
         />
       ) : (
         <ListView
@@ -135,6 +139,7 @@ export function LibraryContent({
           onSelect={onSelect}
           onVerify={onVerify}
           onZip={onZip}
+          onDelete={onDelete}
         />
       )}
     </section>
@@ -149,6 +154,7 @@ function CardGrid({
   onSelect,
   onVerify,
   onZip,
+  onDelete,
 }: {
   items: LibraryItem[];
   selectedId: string | null;
@@ -157,6 +163,7 @@ function CardGrid({
   onSelect: (item: LibraryItem) => void;
   onVerify: (item: LibraryItem) => Promise<void>;
   onZip: (item: LibraryItem) => Promise<void>;
+  onDelete: (item: LibraryItem) => Promise<void>;
 }) {
   return (
     <div className="library-card-grid">
@@ -193,6 +200,7 @@ function CardGrid({
               <button className="icon-button" title="查看文件" onClick={(e) => { e.stopPropagation(); onSelect(item); }}><Eye size={14} /></button>
               <button className="icon-button" title="重新校验" onClick={(e) => { e.stopPropagation(); void onVerify(item); }} disabled={loading}><ShieldCheck size={14} /></button>
               <button className="icon-button" title="重新打包" onClick={(e) => { e.stopPropagation(); void onZip(item); }} disabled={loading || item.total_files === 0}><Archive size={14} /></button>
+              <button className="icon-button" title="删除" onClick={(e) => { e.stopPropagation(); void onDelete(item); }} disabled={loading}><Trash2 size={14} /></button>
             </div>
           </div>
         </article>
@@ -209,6 +217,7 @@ function ListView({
   onSelect,
   onVerify,
   onZip,
+  onDelete,
 }: {
   items: LibraryItem[];
   selectedId: string | null;
@@ -217,6 +226,7 @@ function ListView({
   onSelect: (item: LibraryItem) => void;
   onVerify: (item: LibraryItem) => Promise<void>;
   onZip: (item: LibraryItem) => Promise<void>;
+  onDelete: (item: LibraryItem) => Promise<void>;
 }) {
   return (
     <div className="table-wrap">
@@ -264,6 +274,7 @@ function ListView({
                   <button className="icon-button" title="查看" onClick={(e) => { e.stopPropagation(); onSelect(item); }}><Eye size={14} /></button>
                   <button className="icon-button" title="校验" onClick={(e) => { e.stopPropagation(); void onVerify(item); }} disabled={loading}><ShieldCheck size={14} /></button>
                   <button className="icon-button" title="打包" onClick={(e) => { e.stopPropagation(); void onZip(item); }} disabled={loading || item.total_files === 0}><Archive size={14} /></button>
+                  <button className="icon-button" title="删除" onClick={(e) => { e.stopPropagation(); void onDelete(item); }} disabled={loading}><Trash2 size={14} /></button>
                 </div>
               </td>
             </tr>

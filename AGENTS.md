@@ -143,7 +143,7 @@ npm run validate
 目录格式：
 ```
 Manga/[123456] title
-Zip/[123456] title.zip
+title/title.zip
 ```
 
 ## API Smoke Test 原则

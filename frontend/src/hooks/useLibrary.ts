@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LibraryItem, LibrarySortKey, LibraryViewMode } from "../types";
-import { fetchLibrary, fetchLibraryDetail, verifyLibraryApi, zipLibraryApi, retryFailedLibraryApi } from "../api";
+import { fetchLibrary, fetchLibraryDetail, verifyLibraryApi, zipLibraryApi, retryFailedLibraryApi, deleteLibraryApi } from "../api";
 import { isProblemFile } from "../utils";
 
 export function useLibrary() {
@@ -72,6 +72,13 @@ export function useLibrary() {
     return result;
   }, []);
 
+  const deleteItem = useCallback(async (item: LibraryItem, deleteFiles: boolean) => {
+    await deleteLibraryApi(item.manga_id, deleteFiles);
+    setLibraryItems((current) => current.filter((entry) => entry.manga_id !== item.manga_id));
+    setSelectedLibraryId((current) => current === item.manga_id ? null : current);
+    setSelectedLibraryItem((current) => current?.manga_id === item.manga_id ? null : current);
+  }, []);
+
   const selectedLibraryFiles = useMemo(() => {
     const files = selectedLibraryItem?.files ?? [];
     return showOnlyProblemFiles ? files.filter(isProblemFile) : files;
@@ -140,5 +147,6 @@ export function useLibrary() {
     verifyItem,
     zipItem,
     retryFailed,
+    deleteItem,
   };
 }

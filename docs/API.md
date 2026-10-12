@@ -292,6 +292,18 @@ paused
 
 非法状态流转返回 `409 Conflict`。
 
+### DELETE /api/tasks/{task_id}
+
+删除选中的任务及其日志，不删除资料库、漫画数据或同漫画的其他任务。
+
+Query：
+
+```text
+delete_files=false
+```
+
+`delete_files` 必须明确传入布尔值；默认值为 `false`，保留本地 Manga 图片和 ZIP。传入 `true` 时只删除该漫画的图片目录、当前标题对应的 ZIP 和已知旧版 ZIP 文件；运行中的任务会先等待 worker 停止。若标题与其他漫画冲突，返回 `409 Conflict`，不会删除或覆盖归档。
+
 ## 4. 资料库
 
 ### GET /api/library
@@ -323,7 +335,7 @@ Response：
         "valid_file_count": 42,
         "zip_status": "created",
         "manga_dir": "/data/Manga/[123456] title",
-        "zip_path": "/data/Zip/[123456] title.zip"
+        "zip_path": "/data/title/title.zip"
       }
     ],
     "total": 1
@@ -349,7 +361,7 @@ Response data：
   "missing_files": 1,
   "completeness": 0.9524,
   "download_dir": "data/Manga/[123456] 夏日补档合集",
-  "zip_path": "data/Zip/[123456] 夏日补档合集.zip",
+  "zip_path": "data/夏日补档合集/夏日补档合集.zip",
   "zip_exists": false,
   "files": [
     {
@@ -432,6 +444,18 @@ Response data：
 ```text
 retry_failed_images:fixed=2;failed=0;processed=2;re_resolved=1
 ```
+
+### DELETE /api/library/{manga_id}
+
+删除资料库记录及其关联的任务、页面、文件记录和日志。
+
+Query：
+
+```text
+delete_files=false
+```
+
+默认保留本地 Manga 图片和 ZIP。传入 `true` 时删除该漫画的图片目录和归档文件，但只删除拥有的 ZIP 文件并在归档目录为空时移除目录；标题冲突会返回 `409 Conflict`。
 
 ## 5. 配置
 
@@ -538,7 +562,7 @@ Response：
   "ok": true,
   "data": {
     "connected": true,
-    "version": "1.0.0",
+    "version": "1.0.1",
     "server": "Comic Crawler",
     "paired": true
   },

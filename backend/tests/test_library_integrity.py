@@ -14,7 +14,7 @@ from backend.tests.image_fixtures import image_bytes
 
 async def seed_item(pic_count: int, indexes: tuple[int, ...]) -> tuple[str, Path]:
     manga_id = uuid4().hex
-    title = "Library Integrity"
+    title = f"Library Integrity {manga_id}"
     base = Path(get_settings().download_path)
     directory = manga_dir(base, manga_id, title)
     directory.mkdir(parents=True)

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
 from backend.app.core.config import get_settings
-from backend.app.core.paths import manga_dir, safe_filename, zip_path
+from backend.app.core.files import remove_download_files
+from backend.app.core.paths import legacy_zip_paths, manga_dir, safe_filename, zip_path
 from backend.app.core.time import local_isoformat
 from backend.app.crawler.downloader import image_extension
 from backend.app.crawler.images import find_valid_image_path
@@ -14,7 +15,12 @@ from backend.app.crawler.sources import source_identity
 from backend.app.db.database import SessionLocal
 from backend.app.db.models import DownloadFile, DownloadTask, MangaInfo, MangaPicPage
 from backend.app.db.repository import FileRepository, MangaRepository, TaskRepository, task_to_dict
-from backend.app.services.archive_service import create_zip, is_complete_zip
+from backend.app.services.archive_service import (
+    create_zip,
+    ensure_archive_path_available,
+    is_complete_zip,
+)
+from backend.app.services.task_runner import task_runner
 
 ACTIVE_TASK_STATUSES = {"pending", "queued", "running", "paused"}
 MangaPicPages = list[MangaPicPage]
@@ -111,7 +117,7 @@ class LibraryService:
             error = "" if complete else f"图片不完整：有效 {valid_count}/{total}"
             if complete and get_settings().is_zip:
                 archive = zip_path(
-                    Path(get_settings().download_path), info.id, info.title or info.id,
+                    Path(get_settings().download_path), info.id, info.title or "",
                 )
                 complete = await asyncio.to_thread(
                     is_complete_zip, archive, [Path(row["file_path"]) for row in rows],
@@ -127,6 +133,18 @@ class LibraryService:
         return summary
 
     async def zip(self, manga_id: str, overwrite: bool = True) -> dict | None:
+        async with SessionLocal() as session:
+            manga_repo = MangaRepository(session)
+            info = await manga_repo.get_info(manga_id)
+            if info is None:
+                return None
+            manga_infos = await manga_repo.list_infos()
+            ensure_archive_path_available(
+                manga_id,
+                info.title,
+                ((item.id, item.title) for item in manga_infos),
+            )
+
         summary = await self.verify(manga_id)
         if summary is None:
             return None
@@ -143,6 +161,13 @@ class LibraryService:
             summary["zip_status"] = "exists"
             return summary
 
+        async with SessionLocal() as session:
+            manga_infos = await MangaRepository(session).list_infos()
+            ensure_archive_path_available(
+                manga_id,
+                summary["title"],
+                ((item.id, item.title) for item in manga_infos),
+            )
         target.parent.mkdir(parents=True, exist_ok=True)
         await asyncio.to_thread(
             create_zip, source, target, [Path(row["file_path"]) for row in summary["files"]]
@@ -154,6 +179,60 @@ class LibraryService:
             return None
         refreshed["zip_status"] = "created"
         return refreshed
+
+    async def delete(self, manga_id: str, delete_files: bool = False) -> dict | None:
+        async with SessionLocal() as session:
+            manga_repo = MangaRepository(session)
+            info = await manga_repo.get_info(manga_id)
+            if info is None:
+                return None
+            title = info.title
+            tasks = await TaskRepository(session).list_for_manga(manga_id)
+            manga_infos = await manga_repo.list_infos()
+            if delete_files:
+                self._validate_file_deletion(
+                    manga_id,
+                    title,
+                    ((item.id, item.title) for item in manga_infos),
+                )
+
+        task_ids = [task.id for task in tasks]
+        for task_id in task_ids:
+            await task_runner.quiesce(task_id)
+        try:
+            async with SessionLocal() as session:
+                manga_repo = MangaRepository(session)
+                info = await manga_repo.get_info(manga_id)
+                if info is None:
+                    return None
+                title = info.title
+                if delete_files:
+                    manga_infos = await manga_repo.list_infos()
+                    self._validate_file_deletion(
+                        manga_id,
+                        title,
+                        ((item.id, item.title) for item in manga_infos),
+                    )
+                await manga_repo.delete_manga(manga_id)
+            if delete_files:
+                remove_download_files(get_settings().download_path, manga_id, title)
+            return {"manga_id": manga_id, "deleted": True, "files_deleted": delete_files}
+        finally:
+            for task_id in task_ids:
+                task_runner.release_quiesce(task_id)
+
+    def _validate_file_deletion(
+        self,
+        manga_id: str,
+        title: str,
+        manga_infos: Iterable,
+    ) -> None:
+        base = get_settings().download_path
+        manga_dir(base, manga_id, title)
+        archive = zip_path(base, manga_id, title)
+        legacy_zip_paths(base, manga_id, title)
+        if archive.exists():
+            ensure_archive_path_available(manga_id, title, manga_infos)
 
     async def create_failed_retry_task(self, manga_id: str) -> dict | None:
         summary = await self.verify(manga_id)
@@ -208,7 +287,7 @@ class LibraryService:
         completeness = round(valid_files / total_files, 4) if total_files else 0
         task_status = task.status if task else None
         download_dir = manga_dir(Path(get_settings().download_path), info.id, info.title or info.id)
-        archive_path = zip_path(Path(get_settings().download_path), info.id, info.title or info.id)
+        archive_path = zip_path(Path(get_settings().download_path), info.id, info.title or "")
         archive_exists = archive_path.is_file() and archive_path.stat().st_size > 0
         zip_ready = not get_settings().is_zip or archive_exists
         status = self._computed_status(

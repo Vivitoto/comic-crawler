@@ -9,6 +9,7 @@ import {
   Play,
   RefreshCw,
   RotateCcw,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import type { Task, LogItem, QueueFilter } from "../types";
@@ -57,6 +58,7 @@ export function QueuePage({
   onRefreshLogs,
   onControl,
   onRetry,
+  onDelete,
 }: {
   tasks: Task[];
   selectedTask: Task | null;
@@ -71,6 +73,7 @@ export function QueuePage({
   onRefreshLogs: () => Promise<void>;
   onControl: (task: Task, action: "pause" | "resume" | "cancel") => Promise<void>;
   onRetry: (task: Task) => Promise<void>;
+  onDelete: (task: Task) => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<QueueFilter | "logs">("all");
   const [viewMode, setViewMode] = useViewMode();
@@ -134,9 +137,9 @@ export function QueuePage({
           initialLoading ? (
             <div style={{ padding: "14px 18px" }}><SkeletonTable rows={6} cols={5} /></div>
           ) : viewMode === "table" ? (
-            <TableView tasks={filteredTasks} selectedTask={selectedTask} loading={loading} noImageMode={noImageMode} onTaskSelect={onTaskSelect} onControl={onControl} onRetry={onRetry} />
+            <TableView tasks={filteredTasks} selectedTask={selectedTask} loading={loading} noImageMode={noImageMode} onTaskSelect={onTaskSelect} onControl={onControl} onRetry={onRetry} onDelete={onDelete} />
           ) : (
-            <CardView tasks={filteredTasks} selectedTask={selectedTask} loading={loading} noImageMode={noImageMode} onTaskSelect={onTaskSelect} onControl={onControl} onRetry={onRetry} />
+            <CardView tasks={filteredTasks} selectedTask={selectedTask} loading={loading} noImageMode={noImageMode} onTaskSelect={onTaskSelect} onControl={onControl} onRetry={onRetry} onDelete={onDelete} />
           )
         ) : (
           <div className="table-wrap">
@@ -167,13 +170,13 @@ export function QueuePage({
         )}
       </section>
 
-      {!isLogsTab && <TaskDetailPanel task={selectedTask} loading={loading} noImageMode={noImageMode} onControl={onControl} onRetry={onRetry} />}
+      {!isLogsTab && <TaskDetailPanel task={selectedTask} loading={loading} noImageMode={noImageMode} onControl={onControl} onRetry={onRetry} onDelete={onDelete} />}
     </div>
   );
 }
 
 function TableView({
-  tasks, selectedTask, loading, noImageMode, onTaskSelect, onControl, onRetry,
+  tasks, selectedTask, loading, noImageMode, onTaskSelect, onControl, onRetry, onDelete,
 }: {
   tasks: Task[];
   selectedTask: Task | null;
@@ -182,6 +185,7 @@ function TableView({
   onTaskSelect: (id: string) => void;
   onControl: (task: Task, action: "pause" | "resume" | "cancel") => Promise<void>;
   onRetry: (task: Task) => Promise<void>;
+  onDelete: (task: Task) => Promise<void>;
 }) {
   return (
     <div className="table-wrap">
@@ -214,6 +218,7 @@ function TableView({
                   <button className="icon-button" title="暂停" onClick={(e) => { e.stopPropagation(); void onControl(task, "pause"); }} disabled={!canPause(task) || loading}><Pause size={14} /></button>
                   <button className="icon-button" title="继续" onClick={(e) => { e.stopPropagation(); void onControl(task, "resume"); }} disabled={!canResume(task) || loading}><Play size={14} /></button>
                   <button className="icon-button" title="重试" onClick={(e) => { e.stopPropagation(); void onRetry(task); }} disabled={!canRetry(task) || loading}><RotateCcw size={14} /></button>
+                  <button className="icon-button" title="删除任务" onClick={(e) => { e.stopPropagation(); void onDelete(task); }} disabled={loading}><Trash2 size={14} /></button>
                   <button className="icon-button" title="打开原始链接" onClick={(e) => { e.stopPropagation(); window.open(sourceUrl(task), "_blank"); }}><ExternalLink size={14} /></button>
                 </div>
               </td>
@@ -227,7 +232,7 @@ function TableView({
 }
 
 function CardView({
-  tasks, selectedTask, loading, noImageMode, onTaskSelect, onControl, onRetry,
+  tasks, selectedTask, loading, noImageMode, onTaskSelect, onControl, onRetry, onDelete,
 }: {
   tasks: Task[];
   selectedTask: Task | null;
@@ -236,6 +241,7 @@ function CardView({
   onTaskSelect: (id: string) => void;
   onControl: (task: Task, action: "pause" | "resume" | "cancel") => Promise<void>;
   onRetry: (task: Task) => Promise<void>;
+  onDelete: (task: Task) => Promise<void>;
 }) {
   if (tasks.length === 0) {
     return <p className="empty-copy" style={{ padding: "24px" }}>当前分类暂无任务</p>;
@@ -272,6 +278,7 @@ function CardView({
                 <button className="icon-button" title="暂停" onClick={(e) => { e.stopPropagation(); void onControl(task, "pause"); }} disabled={!canPause(task) || loading}><Pause size={14} /></button>
                 <button className="icon-button" title="继续" onClick={(e) => { e.stopPropagation(); void onControl(task, "resume"); }} disabled={!canResume(task) || loading}><Play size={14} /></button>
                 <button className="icon-button" title="重试" onClick={(e) => { e.stopPropagation(); void onRetry(task); }} disabled={!canRetry(task) || loading}><RotateCcw size={14} /></button>
+                <button className="icon-button" title="删除任务" onClick={(e) => { e.stopPropagation(); void onDelete(task); }} disabled={loading}><Trash2 size={14} /></button>
                 <button className="icon-button" title="打开原始链接" onClick={(e) => { e.stopPropagation(); window.open(sourceUrl(task), "_blank"); }}><ExternalLink size={14} /></button>
               </div>
             </div>
@@ -283,13 +290,14 @@ function CardView({
 }
 
 function TaskDetailPanel({
-  task, loading, noImageMode, onControl, onRetry,
+  task, loading, noImageMode, onControl, onRetry, onDelete,
 }: {
   task: Task | null;
   loading: boolean;
   noImageMode: boolean;
   onControl: (task: Task, action: "pause" | "resume" | "cancel") => Promise<void>;
   onRetry: (task: Task) => Promise<void>;
+  onDelete: (task: Task) => Promise<void>;
 }) {
   const pct = task ? progressPercent(task.progress_current, task.progress_total) : 0;
   const isActive = task && ["running", "queued"].includes(task.status);
@@ -338,6 +346,7 @@ function TaskDetailPanel({
           <button className="button secondary" disabled={!task || !canResume(task) || loading} onClick={() => task && void onControl(task, "resume")}><Play size={15} />继续</button>
           <button className="button secondary danger-button" disabled={!task || !canCancel(task) || loading} onClick={() => task && void onControl(task, "cancel")}><XCircle size={15} />取消</button>
           <button className="button primary" disabled={!task || !canRetry(task) || loading} onClick={() => task && void onRetry(task)}><RotateCcw size={15} />重试</button>
+          <button className="button secondary danger-button" disabled={!task || loading} onClick={() => task && void onDelete(task)}><Trash2 size={15} />删除</button>
           {task && <button className="button secondary" onClick={() => window.open(sourceUrl(task), "_blank")}><ExternalLink size={15} />原始链接</button>}
         </div>
         {isActive && <p className="detail-hint">任务进行中，可暂停或取消</p>}

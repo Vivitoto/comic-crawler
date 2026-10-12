@@ -374,7 +374,7 @@ DownloadFile valid 数量 == pic_count
 
 ```text
 Manga/[{manga_id}] {safe_title}
-Zip/[{manga_id}] {safe_title}.zip
+{safe_title}/{safe_title}.zip
 ```
 
 图片：
@@ -387,7 +387,7 @@ Zip/[{manga_id}] {safe_title}.zip
 
 ```text
 Manga/[123456] 夏日补档合集/0001_1.jpg
-Zip/[123456] 夏日补档合集.zip
+夏日补档合集/夏日补档合集.zip
 ```
 
 ## 13. 校验规则

@@ -656,4 +656,4 @@ def test_manga_dir():
 def test_zip_path():
     from backend.app.core.paths import zip_path
     result = zip_path(Path("/data"), "123", "My Manga")
-    assert str(result) == "/data/Zip/[123] My Manga.zip"
+    assert str(result) == "/data/My Manga/My Manga.zip"

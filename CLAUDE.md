@@ -101,7 +101,7 @@ Three-source merge: env vars (`WNACG_` prefix) > `config/config.local.json` > bu
 - Never does: download images, write DB, write files, create ZIPs, bypass backend security
 
 ### Data Rules
-- File paths: `data/Manga/[{id}] {title}/{0001}_{pic_num}.jpg`, `data/Zip/[{id}] {title}.zip`
+- File paths: `data/Manga/[{id}] {title}/{0001}_{pic_num}.jpg`, `data/{title}/{title}.zip`
 - Completion requires: full metadata, all pages resolved, all images downloaded and verified, ZIP successful (or disabled)
 - Incomplete downloads must be `partial` or `failed`, never `completed`
 - File operations must be idempotent: re-runs only fill gaps, never destroy valid files

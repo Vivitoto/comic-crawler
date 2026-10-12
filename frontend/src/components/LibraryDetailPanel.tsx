@@ -8,6 +8,7 @@ import {
   RefreshCw,
   RotateCcw,
   ShieldCheck,
+  Trash2,
   X,
 } from "lucide-react";
 import type { LibraryItem } from "../types";
@@ -27,6 +28,7 @@ export function LibraryDetailPanel({
   onVerify,
   onZip,
   onRetryFailed,
+  onDelete,
   onRefreshDetail,
   setShowOnlyProblemFiles,
 }: {
@@ -41,6 +43,7 @@ export function LibraryDetailPanel({
   onVerify: (item: LibraryItem) => Promise<void>;
   onZip: (item: LibraryItem) => Promise<void>;
   onRetryFailed: (item: LibraryItem) => Promise<void>;
+  onDelete: (item: LibraryItem) => Promise<void>;
   onRefreshDetail: () => void;
   setShowOnlyProblemFiles: (v: boolean) => void;
 }) {
@@ -75,6 +78,9 @@ export function LibraryDetailPanel({
         </button>
         <button className="button primary" onClick={() => void onZip(item)} disabled={loading || item.total_files === 0}>
           <Archive size={15} />打包
+        </button>
+        <button className="button secondary danger-button" onClick={() => void onDelete(item)} disabled={loading}>
+          <Trash2 size={15} />删除
         </button>
         <button
           className="button secondary"

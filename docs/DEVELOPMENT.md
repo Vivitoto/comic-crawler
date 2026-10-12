@@ -1,6 +1,6 @@
 # Comic Crawler 开发文档总览
 
-版本：v1.0.0
+版本：v1.0.1
 日期：2026-05-27  
 状态：草案
 
@@ -78,7 +78,7 @@ ZIP 成功或 ZIP 被配置关闭
 
 ```text
 Manga/[123456] title
-Zip/[123456] title.zip
+title/title.zip
 ```
 
 ## 4. 推荐迭代顺序

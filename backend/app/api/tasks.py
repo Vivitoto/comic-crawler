@@ -1,11 +1,13 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
+from backend.app.core.paths import UnsafePathError
 from backend.app.core.schemas import (
     ApiResponse,
     BatchTaskCreateRequest,
     TaskCreateRequest,
     TaskRetryRequest,
 )
+from backend.app.services.archive_service import ArchivePathCollisionError
 from backend.app.services.task_runner import task_runner
 from backend.app.services.task_service import InvalidTaskTransition, task_service
 
@@ -89,6 +91,20 @@ async def cancel_task(task_id: str):
         return ApiResponse(data=task)
     except KeyError:
         raise HTTPException(status_code=404, detail="任务不存在") from None
+    except InvalidTaskTransition as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+
+
+@router.delete("/{task_id}", response_model=ApiResponse)
+async def delete_task(task_id: str, delete_files: bool = False):
+    try:
+        return ApiResponse(data=await task_service.delete(task_id, delete_files=delete_files))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="任务不存在") from None
+    except ArchivePathCollisionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    except UnsafePathError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
     except InvalidTaskTransition as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from None
 

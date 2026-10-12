@@ -42,7 +42,7 @@ def fast_settings(monkeypatch):
 @pytest_asyncio.fixture
 async def download_case():
     manga_id = uuid4().hex
-    title = "Recovery Test"
+    title = f"Recovery Test {manga_id}"
     page_url = "https://example.test/gallery/page.html"
     old_url = "https://cdn.example.test/image.jpg?token=expired"
     async with SessionLocal() as session:
@@ -57,6 +57,7 @@ async def download_case():
     directory.mkdir(parents=True, exist_ok=True)
     return SimpleNamespace(
         manga_id=manga_id,
+        title=title,
         task_id=task.id,
         page=page,
         directory=directory,
@@ -462,7 +463,7 @@ async def test_zip_failure_cannot_mark_task_completed(monkeypatch, download_case
     monkeypatch.setattr(runner_module, "smart_fetch_bytes", AsyncMock(return_value=image_bytes()))
     runner = runner_module.TaskRunner()
     assert await runner._download_images(case.task_id, case.manga_id) == 1
-    target = zip_path(Path(get_settings().download_path), case.manga_id, "Recovery Test")
+    target = zip_path(Path(get_settings().download_path), case.manga_id, case.title)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(b"existing archive")
     monkeypatch.setattr(
@@ -495,7 +496,7 @@ async def test_complete_mocked_task_refreshes_image_and_builds_zip(monkeypatch, 
         nonlocal details
         if url == index_url:
             return (
-                '<h2>Recovery Test</h2><li class="gallary_item">'
+                f'<h2>{case.title}</h2><li class="gallary_item">'
                 f'<a href="{case.page.page_url}">page</a><span>001</span></li>'
             )
         assert url == case.page.page_url
@@ -525,7 +526,7 @@ async def test_complete_mocked_task_refreshes_image_and_builds_zip(monkeypatch, 
         assert task.progress_current == task.progress_total == 1
         rerun = await TaskRepository(session).create(case.manga_id, "wnacg", "queued")
     assert calls == [case.old_url, new_url]
-    target = zip_path(Path(settings.download_path), case.manga_id, "Recovery Test")
+    target = zip_path(Path(settings.download_path), case.manga_id, case.title)
     with zipfile.ZipFile(target) as archive:
         assert archive.namelist() == ["0001_001.png"]
         assert archive.read("0001_001.png") == data

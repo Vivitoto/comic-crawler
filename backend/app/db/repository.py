@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from sqlalchemy import desc, func, or_, select
+from sqlalchemy import delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.time import local_isoformat
@@ -190,6 +190,14 @@ class MangaRepository:
             pages[page.manga_id].append(page)
         return pages
 
+    async def delete_manga(self, manga_id: str) -> None:
+        for model in (MangaPage, MangaPicPage, DownloadFile, DownloadTask, AppLog):
+            await self.session.execute(delete(model).where(model.manga_id == manga_id))
+        info = await self.get_info(manga_id)
+        if info is not None:
+            await self.session.delete(info)
+        await self.session.commit()
+
 
 class TaskRepository:
     active_statuses = {"pending", "queued", "running", "paused"}
@@ -237,6 +245,14 @@ class TaskRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_for_manga(self, manga_id: str) -> DownloadTaskRows:
+        result = await self.session.execute(
+            select(DownloadTask)
+            .where(DownloadTask.manga_id == manga_id)
+            .order_by(desc(DownloadTask.created_at))
+        )
+        return list(result.scalars().all())
+
     async def active_for_manga(self, manga_id: str) -> DownloadTask | None:
         result = await self.session.execute(
             select(DownloadTask)
@@ -282,6 +298,15 @@ class TaskRepository:
         self.session.add(task)
         await self.session.commit()
         await self.session.refresh(task)
+        return task
+
+    async def delete(self, task_id: str) -> DownloadTask | None:
+        task = await self.get(task_id)
+        if task is None:
+            return None
+        await self.session.execute(delete(AppLog).where(AppLog.task_id == task_id))
+        await self.session.delete(task)
+        await self.session.commit()
         return task
 
     async def set_status(self, task: DownloadTask, status: str) -> DownloadTask:

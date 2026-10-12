@@ -51,7 +51,7 @@ Compose 会挂载本地目录：
 config/data.sqlite
 config/config.local.json
 data/Manga
-data/Zip
+data/<title>/<title>.zip
 ```
 
 ## 镜像内容

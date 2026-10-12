@@ -1,3 +1,8 @@
+from collections.abc import Iterable
+
+from backend.app.core.config import get_settings
+from backend.app.core.files import remove_download_files
+from backend.app.core.paths import legacy_zip_paths, manga_dir, zip_path
 from backend.app.core.schemas import (
     BatchTaskCreateRequest,
     BatchTaskItem,
@@ -8,6 +13,8 @@ from backend.app.core.schemas import (
 from backend.app.crawler.sources import manga_key
 from backend.app.db.database import SessionLocal
 from backend.app.db.repository import MangaRepository, TaskRepository, task_to_dict
+from backend.app.services.archive_service import ensure_archive_path_available
+from backend.app.services.task_runner import task_runner
 
 LEGAL_TRANSITIONS = {
     "pending": {"queued", "cancelled"},
@@ -154,6 +161,64 @@ class TaskService:
             if task:
                 return {"manga_id": manga_id, "status": task.status, "task_id": task.id}
             return {"manga_id": manga_id, "status": "ready", "task_id": None}
+
+    async def delete(self, task_id: str, delete_files: bool = False) -> dict:
+        async with SessionLocal() as session:
+            repo = TaskRepository(session)
+            task = await self._require(repo, task_id)
+            manga_id = task.manga_id
+            manga = await MangaRepository(session).get_info(manga_id)
+            title = manga.title if manga else ""
+            manga_infos = await MangaRepository(session).list_infos()
+            if delete_files:
+                self._validate_file_deletion(
+                    manga_id,
+                    title,
+                    ((info.id, info.title) for info in manga_infos),
+                )
+
+        await task_runner.quiesce(task_id)
+        try:
+            async with SessionLocal() as session:
+                repo = TaskRepository(session)
+                task = await self._require(repo, task_id)
+                manga = await MangaRepository(session).get_info(task.manga_id)
+                title = manga.title if manga else ""
+                manga_infos = await MangaRepository(session).list_infos()
+                if delete_files:
+                    self._validate_file_deletion(
+                        task.manga_id,
+                        title,
+                        ((info.id, info.title) for info in manga_infos),
+                    )
+                await repo.delete(task_id)
+            if delete_files:
+                remove_download_files(
+                    get_settings().download_path,
+                    manga_id,
+                    title,
+                )
+            return {
+                "task_id": task_id,
+                "manga_id": manga_id,
+                "deleted": True,
+                "files_deleted": delete_files,
+            }
+        finally:
+            task_runner.release_quiesce(task_id)
+
+    def _validate_file_deletion(
+        self,
+        manga_id: str,
+        title: str,
+        manga_infos: Iterable,
+    ) -> None:
+        base = get_settings().download_path
+        manga_dir(base, manga_id, title)
+        archive = zip_path(base, manga_id, title)
+        legacy_zip_paths(base, manga_id, title)
+        if archive.exists():
+            ensure_archive_path_available(manga_id, title, manga_infos)
 
     async def _enrich(self, session, result: dict) -> dict:
         manga = await MangaRepository(session).get_info(result["manga_id"])

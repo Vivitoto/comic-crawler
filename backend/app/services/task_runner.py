@@ -27,7 +27,7 @@ from backend.app.db.repository import (
     TaskRepository,
     task_to_dict,
 )
-from backend.app.services.archive_service import create_zip
+from backend.app.services.archive_service import create_zip, ensure_archive_path_available
 from backend.app.services.log_service import log_service
 
 CONTROLLED_TASK_STATUSES = {"paused", "cancelled"}
@@ -42,7 +42,36 @@ class TaskControlSignal(Exception):
 
 class TaskRunner:
     def __init__(self) -> None:
-        self._running: set[str] = set()
+        self._running: dict[str, asyncio.Task[None]] = {}
+        self._stopping: set[str] = set()
+
+    def _begin_run(self, task_id: str) -> bool:
+        if task_id in self._stopping or task_id in self._running:
+            return False
+        current = asyncio.current_task()
+        if current is None:
+            return False
+        self._running[task_id] = current
+        return True
+
+    def _finish_run(self, task_id: str) -> None:
+        self._running.pop(task_id, None)
+
+    async def quiesce(self, task_id: str) -> None:
+        """Stop a task and wait until its worker has finished all writes."""
+        self._stopping.add(task_id)
+        async with SessionLocal() as session:
+            task = await TaskRepository(session).get(task_id)
+            if task is not None and task.status in TaskRepository.active_statuses:
+                await TaskRepository(session).set_status(task, "cancelled")
+
+        worker = self._running.get(task_id)
+        current = asyncio.current_task()
+        if worker is not None and worker is not current:
+            await worker
+
+    def release_quiesce(self, task_id: str) -> None:
+        self._stopping.discard(task_id)
 
     async def run_many(self, task_ids: Sequence[str]) -> None:
         await asyncio.gather(*(self.run(task_id) for task_id in task_ids))
@@ -68,9 +97,8 @@ class TaskRunner:
         return len(restored)
 
     async def run(self, task_id: str) -> None:
-        if task_id in self._running:
+        if not self._begin_run(task_id):
             return
-        self._running.add(task_id)
         try:
             await self._ensure_runnable(task_id)
             manga_id = await self._manga_id(task_id)
@@ -108,12 +136,11 @@ class TaskRunner:
                 )
             await self._set_task(task_id, "failed", "done", error=error)
         finally:
-            self._running.discard(task_id)
+            self._finish_run(task_id)
 
     async def run_failed_images(self, task_id: str) -> None:
-        if task_id in self._running:
+        if not self._begin_run(task_id):
             return
-        self._running.add(task_id)
         try:
             await self._ensure_runnable(task_id)
             manga_id = await self._manga_id(task_id)
@@ -147,7 +174,7 @@ class TaskRunner:
                 )
             await self._set_task(task_id, "failed", "done", error=error)
         finally:
-            self._running.discard(task_id)
+            self._finish_run(task_id)
 
     async def _manga_id(self, task_id: str) -> str | None:
         async with SessionLocal() as session:
@@ -409,7 +436,13 @@ class TaskRunner:
                         task_id, "running", "downloading", current, total
                     )
 
-        await asyncio.gather(*(download_page(page) for page in resolved))
+        results = await asyncio.gather(
+            *(download_page(page) for page in resolved),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
         return valid_count
 
     async def _download_problem_images(self, task_id: str, manga_id: str) -> dict:
@@ -683,8 +716,15 @@ class TaskRunner:
     async def _zip_manga(self, manga_id: str) -> None:
         settings = get_settings()
         async with SessionLocal() as session:
-            info = await MangaRepository(session).get_info(manga_id)
-        title = info.title if info and info.title else manga_id
+            manga_repo = MangaRepository(session)
+            info = await manga_repo.get_info(manga_id)
+            manga_infos = await manga_repo.list_infos()
+        title = info.title if info else ""
+        ensure_archive_path_available(
+            manga_id,
+            title,
+            ((item.id, item.title) for item in manga_infos),
+        )
         source = manga_dir(Path(settings.download_path), manga_id, title)
         target = zip_path(Path(settings.download_path), manga_id, title)
         async with SessionLocal() as session:
@@ -774,6 +814,8 @@ class TaskRunner:
         )
 
     async def _ensure_runnable(self, task_id: str) -> None:
+        if task_id in self._stopping:
+            raise TaskControlSignal("cancelled")
         async with SessionLocal() as session:
             task = await TaskRepository(session).get(task_id)
             if task is None:

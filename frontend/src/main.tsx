@@ -58,8 +58,12 @@ function App() {
     title: string;
     message: string;
     variant: "danger" | "default";
+    confirmLabel: string;
+    checkboxLabel?: string;
+    checkboxChecked?: boolean;
+    onCheckboxChange?: (checked: boolean) => void;
     onConfirm: () => void;
-  }>({ open: false, title: "", message: "", variant: "default", onConfirm: () => {} });
+  }>({ open: false, title: "", message: "", variant: "default", confirmLabel: "确认", onConfirm: () => {} });
 
   const { showToast } = useToast();
   const tasks = useTasks();
@@ -105,8 +109,8 @@ function App() {
     setLoading(true);
     try {
       await fn();
-    } catch {
-      showToast("操作失败，请重试", "error");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "操作失败，请重试", "error");
     } finally {
       setLoading(false);
     }
@@ -119,6 +123,7 @@ function App() {
         title: "取消任务",
         message: `确定要取消任务 ${task.manga_id} 吗？取消后需要重新添加。`,
         variant: "danger",
+        confirmLabel: "取消任务",
         onConfirm: () => {
           setConfirmState((s) => ({ ...s, open: false }));
           void withLoading(async () => {
@@ -143,6 +148,61 @@ function App() {
       await tasks.retryTask(task);
       showToast(`已重试任务 ${task.manga_id}`, "success");
       await refreshAll();
+    });
+  }
+
+  async function handleDeleteTask(task: Task) {
+    let deleteFiles = false;
+    setConfirmState({
+      open: true,
+      title: "删除任务",
+      message: `确定删除任务 ${task.manga_id} 吗？只会删除这条任务记录和它的日志，资料库记录会保留。`,
+      variant: "danger",
+      confirmLabel: "删除",
+      checkboxLabel: "同时删除本地 Manga 图片和 ZIP",
+      checkboxChecked: false,
+      onCheckboxChange: (checked) => {
+        deleteFiles = checked;
+        setConfirmState((current) => ({ ...current, checkboxChecked: checked }));
+      },
+      onConfirm: () => {
+        setConfirmState((s) => ({ ...s, open: false }));
+        void withLoading(async () => {
+          await tasks.deleteTask(task, deleteFiles);
+          showToast(
+            deleteFiles
+              ? `已删除任务和本地文件 ${task.manga_id}`
+              : `已删除任务 ${task.manga_id}，本地文件已保留`,
+            "success",
+          );
+          await refreshAll();
+        });
+      },
+    });
+  }
+
+  async function handleDeleteLibrary(item: typeof library.libraryItems[0]) {
+    let deleteFiles = false;
+    setConfirmState({
+      open: true,
+      title: "删除资料",
+      message: `确定从资料库移除 ${item.manga_id} 吗？`,
+      variant: "danger",
+      confirmLabel: "删除",
+      checkboxLabel: "同时删除本地 Manga 图片和 ZIP",
+      checkboxChecked: false,
+      onCheckboxChange: (checked) => {
+        deleteFiles = checked;
+        setConfirmState((current) => ({ ...current, checkboxChecked: checked }));
+      },
+      onConfirm: () => {
+        setConfirmState((current) => ({ ...current, open: false }));
+        void withLoading(async () => {
+          await library.deleteItem(item, deleteFiles);
+          showToast(deleteFiles ? `已删除资料和本地文件 ${item.manga_id}` : `已从资料库移除 ${item.manga_id}，本地文件已保留`, "success");
+          await refreshAll();
+        });
+      },
     });
   }
 
@@ -193,6 +253,7 @@ function App() {
       title: "生成扩展 Token",
       message: "生成新 Token 后，旧 Token 将失效。确定继续吗？",
       variant: "default",
+      confirmLabel: "确认",
       onConfirm: () => {
         setConfirmState((s) => ({ ...s, open: false }));
         void withLoading(async () => {
@@ -271,6 +332,7 @@ function App() {
               onRefreshLogs={logs.refresh}
               onControl={handleControlTask}
               onRetry={handleRetryTask}
+              onDelete={handleDeleteTask}
             />
           )}
 
@@ -296,6 +358,7 @@ function App() {
               onVerify={handleVerify}
               onZip={handleZip}
               onRetryFailed={handleRetryFailed}
+              onDelete={handleDeleteLibrary}
               onRefresh={library.refresh}
               onRefreshDetail={() => { if (library.selectedLibraryId) void library.loadDetail(library.selectedLibraryId); }}
               setShowOnlyProblemFiles={library.setShowOnlyProblemFiles}
@@ -332,7 +395,10 @@ function App() {
         title={confirmState.title}
         message={confirmState.message}
         variant={confirmState.variant}
-        confirmLabel={confirmState.variant === "danger" ? "取消任务" : "确认"}
+        confirmLabel={confirmState.confirmLabel}
+        checkboxLabel={confirmState.checkboxLabel}
+        checkboxChecked={confirmState.checkboxChecked}
+        onCheckboxChange={confirmState.onCheckboxChange}
         onConfirm={confirmState.onConfirm}
         onCancel={() => setConfirmState((s) => ({ ...s, open: false }))}
       />

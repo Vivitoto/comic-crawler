@@ -201,7 +201,7 @@ async def test_download_stores_processed_file_original_and_zip_correctly(
     }.items():
         monkeypatch.setattr(settings, key, value)
     manga_id = uuid4().hex
-    title = "Compression Test"
+    title = f"Compression Test {manga_id}"
     async with SessionLocal() as session:
         repo = MangaRepository(session)
         await repo.upsert_info(manga_id, title, "", 1, "ready")
